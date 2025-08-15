@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Registro de Ponto</title>
+<style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+    input, button { padding: 10px; font-size: 16px; margin: 5px; }
+</style>
+</head>
+<body>
+    <h1>Registro de Ponto</h1>
+    <input type="text" id="nome" placeholder="Digite seu nome">
+    <br>
+    <button onclick="baterPonto()">Bater Ponto</button>
+    <p id="mensagem"></p>
+
+    <script>
+        const apiUrl = "https://script.google.com/macros/s/AKfycbxYSPMTXIwtAw_kCMq-rzDkTRhBuCPkTlD5qTEusJpVXd9czmdKYKAOqKjrFE9tKyFnTg/exec";
+        
+        // 📍 Coordenadas da empresa (troque para as corretas)
+        const empresaLat = -7.21809; // exemplo: Salvador-BA
+        const empresaLng = -35.89025; // exemplo: Salvador-BA
+        const raioPermitido = 100; // em metros
+
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const toRad = x => x * Math.PI / 180;
+            const φ1 = toRad(lat1);
+            const φ2 = toRad(lat2);
+            const Δφ = toRad(lat2 - lat1);
+            const Δλ = toRad(lon2 - lon1);
+
+            const a = Math.sin(Δφ/2) ** 2 +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
+        }
+
+        function baterPonto() {
+            const nome = document.getElementById('nome').value.trim();
+            if (!nome) {
+                document.getElementById('mensagem').innerText = "Digite seu nome!";
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                document.getElementById('mensagem').innerText = "Seu navegador não suporta geolocalização.";
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(pos => {
+                const { latitude, longitude } = pos.coords;
+                const distancia = calcularDistancia(latitude, longitude, empresaLat, empresaLng);
+
+                if (distancia > raioPermitido) {
+                    document.getElementById('mensagem').innerText = "Você não está no local permitido para bater ponto.";
+                    return;
+                }
+
+                fetch(apiUrl, {
+                    method: "POST",
+                    body: new URLSearchParams({ nome: nome })
+                })
+                .then(res => res.text())
+                .then(data => {
+                    document.getElementById('mensagem').innerText = data;
+                    document.getElementById('nome').value = "";
+                })
+                .catch(() => {
+                    document.getElementById('mensagem').innerText = "Erro ao registrar.";
+                });
+
+            }, () => {
+                document.getElementById('mensagem').innerText = "Permita o acesso à localização para bater ponto.";
+            });
+        }
+    </script>
+</body>
+</html>
